@@ -102,7 +102,7 @@ class Map:
         self.set_rect(rect_v, tile)
 
     @classmethod
-    def Random(cls, area_rect, room_number, min_room_size, max_room_size, center, default, room_tile, timeout=10):
+    def Random(cls, area_rect, room_number, min_room_size, max_room_size, center, default, room_tile, timeout=1000):
         ''' generate a random map inside area_rect, WARNING: Will enter an infinite loop if not given enough space in area_rect. '''
 
         map = cls(default=default)
@@ -124,21 +124,26 @@ class Map:
             w = random.randrange(min_room_size, max_room_size + 1)
             h = random.randrange(min_room_size, max_room_size + 1)
 
-            x = random.randrange(area_rect.x1 + w, area_rect.x2 - w)
-            y = random.randrange(area_rect.y1 + h, area_rect.y2 - h)
+            x = random.randrange(area_rect.x1, area_rect.x2)
+            y = random.randrange(area_rect.y1, area_rect.y2)
 
             room = utils.Rect(x, y, w, h)
 
             # If it doesn't intersect with any other rect
             intersects = False
-            for other_room in map.rooms:
-                if room.intersects(other_room):
-                    intersects = True
+
+            if not area_rect.contains(room):
+                intersects = True
+            
+            else:
+                for other_room in map.rooms:
+                    if room.intersects(other_room):
+                        intersects = True
 
             if intersects:
                 room_timeout -= 1
                 if not room_timeout:
-                    print("Error: room failing exceeded, generating stopped")
+                    print("Error: room failing exceeded, generation stopped")
                     break
                 continue
 
