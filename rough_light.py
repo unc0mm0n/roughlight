@@ -46,7 +46,7 @@ class Game:
         # Add room lables to map
         count = 0
         for room in self.map.rooms:
-            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white)
+            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white, False)
             print(label)
             self.objects.append(label)
             count += 1
@@ -62,7 +62,7 @@ class Game:
         self.player = src.objects.Player(utils.Vector(50, 28), b'@', libtcod.white, self.map)
         self.objects.append(self.player)
 
-        npc = src.objects.Player(utils.Vector(30, 28), b'@', libtcod.red, self.map)
+        npc = src.objects.Object(utils.Vector(30, 28), b'@', libtcod.red, True)
         self.objects.append(npc)
 
     def run(self):
@@ -90,14 +90,15 @@ class Game:
         # Draw all objects in given area
         drawn = []
         for object in self.objects:
-            if (self.map.in_area(self.width, self.height, object.location, self.player.location)):
-                self.draw_object(object)
-                drawn.append(object)
+            if object.visible:
+                if (self.map.in_area(self.width, self.height, object.location, self.player.location)):
+                    self.draw_object(object)
+                    drawn.append(object)
 
         libtcod.console_flush()
 
         for object in drawn:
-            self.clear_object(object)
+                self.clear_object(object)
 
 
     def draw_object(self, object, console=0):
