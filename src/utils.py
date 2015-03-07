@@ -76,7 +76,7 @@ class Rect():
                 self.y1 <= other.y2 and
                 other.y1 <= self.y2)
 
-    def containing(self, other):
+    def contains(self, other):
         ''' returns true if other is completely inside self. '''
         return (self.x1 <= other.x1 and
                 self.x2 >= other.x2 and
