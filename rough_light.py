@@ -7,8 +7,14 @@ SCREEN_WIDTH = 100
 SCREEN_HEIGHT = 56
 LIMIT_FPS = 30
 
-COLOR_DARK_WALL = libtcod.Color(0, 0, 30)
+COLOR_DARK_WALL = libtcod.Color(0, 0, 50)
+COLOR_LIGHT_WALL = libtcod.Color(130, 130, 130)
+
 COLOR_DARK_GROUND = libtcod.Color(20, 20, 80)
+COLOR_LIGHT_GROUND = libtcod.Color(120, 120, 80)
+COLOR_UNEXPLORED = libtcod.Color(0, 0, 0)
+
+UNEXPLORED = src.map.Tile(COLOR_UNEXPLORED, False)
 
 SAMPLE_MAP = src.map.Map({
     (10, 10): src.map.Tile(libtcod.yellow, True),
@@ -46,8 +52,7 @@ class Game:
         # Add room lables to map
         count = 0
         for room in self.map.rooms:
-            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white, False)
-            print(label)
+            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white, True)
             self.objects.append(label)
             count += 1
 
@@ -59,15 +64,18 @@ class Game:
         libtcod.sys_set_fps(LIMIT_FPS)
 
         # player initialization
-        self.player = src.objects.Player(utils.Vector(50, 28), b'@', libtcod.white, self.map)
+        self.player = src.objects.Player(utils.Vector(50, 28), b'@', libtcod.white, self.map, fov=20)
         self.objects.append(self.player)
 
         npc = src.objects.Object(utils.Vector(30, 28), b'@', libtcod.red, True)
         self.objects.append(npc)
 
+        self.player.update_fov()
+
     def run(self):
         # Game loop
         while not (libtcod.console_is_window_closed() or self.close_game):
+            libtcod.console_set_window_title(bytes('{} {}'.format(TITLE, libtcod.sys_get_fps()), 'utf-8'))
             self.step()
             self.draw()
       
@@ -82,15 +90,24 @@ class Game:
 
         # And draw it
         for x, row in enumerate(area):
-            for y, tile in enumerate(row):
-                libtcod.console_set_char_background(0, x, y, tile.color, libtcod.BKGND_SET)
+            for y, square in enumerate(row):
+                tile = UNEXPLORED
+                color = tile.color
+                if square[0] in self.player.explored:
+                    tile = square[1]
+
+                    if square[0] in self.player.visible:
+                        color = tile.color
+                    else:
+                        color = tile.dark_color
+                libtcod.console_set_char_background(0, x, y, color, libtcod.BKGND_SET)
 
 
 
         # Draw all objects in given area
         drawn = []
         for object in self.objects:
-            if object.visible:
+            if object.visible and object.location in self.player.visible:
                 if (self.map.in_area(self.width, self.height, object.location, self.player.location)):
                     self.draw_object(object)
                     drawn.append(object)
@@ -98,7 +115,7 @@ class Game:
         libtcod.console_flush()
 
         for object in drawn:
-                self.clear_object(object)
+            self.clear_object(object)
 
 
     def draw_object(self, object, console=0):
@@ -136,16 +153,13 @@ class Game:
 
 if __name__ == '__main__':
     area = utils.Rect(-100, -100, 200, 200)
-    default = src.map.Tile(COLOR_DARK_WALL, True)
-    walkable = src.map.Tile(COLOR_DARK_GROUND, False)
-    game_map = src.map.Map(default=default)
+    default = src.map.Tile(COLOR_LIGHT_WALL, True, dark_color = COLOR_DARK_WALL)
+    walkable = src.map.Tile(COLOR_LIGHT_GROUND, False, dark_color = COLOR_DARK_GROUND)
+    
+    game_map = src.map.Map(default=walkable)
+    game_map.set_rect(utils.Rect(49, 29, 1, 1), default)
 
-    #game_map.set_rect(src.utils.Rect(30, 14, 21, 28), walkable)
-    #game_map.set_rect(src.utils.Rect(50, 24, 200, 8), walkable)
-
-    #game_map.set_connection((0, 0), (50,28), 3, walkable)
-
-    game_map = src.map.Map.Random(area, 26, 10, 10, utils.Vector(50, 28), default, walkable)
+    #game_map = src.map.Map.Random(area, 26, 11, 11, utils.Vector(50, 28), default, walkable)
     #print(list(str(room) for room in game_map.rooms))
     game = Game(game_map);
     game.run()
