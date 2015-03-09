@@ -1,23 +1,38 @@
 import math
 import random
-from . import utils
+
+# try a relative import of utils
+try:
+    from . import utils
+except SystemError:
+    pass
+
 
 class Tile:
     ''' A tile object holding the properties of a single tile
         as well as any Events that might occur in it
     '''
 
-    def __init__(self, color, blocked, block_sight=None, events=None):
+    def __init__(self, color, blocked, block_sight=None, events=None, dark_color=None):
         self.color = color
         self.blocked = blocked
-
-        if not block_sight:
+        
+        self.block_sight = block_sight
+        if self.block_sight is None:
             self.block_sight = blocked
+
+        self.dark_color = dark_color
+        if self.dark_color is None:
+            self.dark_color = color
+
 
         self.events = events
 
     def shallow_copy(self):
-        return Tile(self.color, self.blocked, self.block_sight, self.events)
+        return Tile(self.color, self.blocked, self.block_sight, self.events, self.dark_color)
+
+    def __str__(self):
+        return "Tile: {} {} {} {}".format(self.color, self.blocked, 'a' , self.events)
 
 
 class Map:
@@ -27,17 +42,20 @@ class Map:
         the value of each location should be a tile object.
     '''
 
-    def __init__(self, initial_grid={}, rooms=[], default=None):
+    def __init__(self, initial_grid=None, rooms=None, default=None):
+
         self.grid = initial_grid
+        if not self.grid:
+            self.grid = {}
+
         self.rooms = rooms
+        if not self.rooms:
+            self.rooms = []
 
         self.default = default
 
     def __getitem__(self, key):
-        try:
-            return self.grid[key]
-        except KeyError:
-            return self.default
+        return self.grid.get(key, self.default)
 
     def __setitem__(self, key, value):
         self.grid[key] = value
@@ -59,23 +77,35 @@ class Map:
         return x1 == x2 and y1 == y2
 
     def get_area(self, width, height, location):
-        ''' Returns the area of given size that location is in as a 2 dimensional list
+        ''' Returns the area of given size that location is in
             Treating point (0, 0) as the bottom left corner of an area.
         '''
         if (width == 0 or height == 0):
-            raise ValueError('width and height must not be 0')
+            raise ValueError('Width and height must not be 0')
 
         x_offset = math.floor(location[0]/width) * width
         y_offset = math.floor(location[1]/height) * height
 
-        return [[self[x + x_offset, height - y + y_offset - 1] for y in range(height)] for x in range(width)]
+        area = []
+        for x in range(width):
+            row = []
+            for y in range(height - 1, -1, -1):
+                square = (x + x_offset, y + y_offset)
+                row.append((square, self[square]))
+            area.append(row)
+
+        return area
 
     def set_rect(self, rect, tile, is_room=False):
         ''' sets a rectangular area of dimensions w*h, with the buttom left corner at
             corner_x, corner_y, as shallow copies of given tile. '''
         for x in range(rect.x1, rect.x2):
             for y in range(rect.y1, rect.y2):
-                self[x, y] = tile.shallow_copy()
+                try:
+                    self[x, y] = tile.shallow_copy()
+                except AttributeError:
+                    print('WARNING: {} missing shallow_copy method'.format(tile))
+                    self[x, y] = tile
 
         if is_room:
             self.rooms.append(rect)
@@ -134,7 +164,7 @@ class Map:
 
             if not area_rect.contains(room):
                 intersects = True
-            
+
             else:
                 for other_room in map.rooms:
                     if room.intersects(other_room):
@@ -152,7 +182,7 @@ class Map:
 
             # add a path from the center of the previous room to the center of the room
             center = (x + w // 2, y + h // 2)
-            tunnel_w = random.randrange(2, 2 + w // 4)
+            tunnel_w = random.randrange(2, 3 + w // 4)
             map.set_connection(last_center, center, tunnel_w, room_tile)
             # remember the center of the new room
             last_center = center
@@ -163,21 +193,20 @@ class Map:
 
 if __name__ == '__main__':
 
+    import utils
+    import objects
+
     def pprint(arr):
         for row in arr:
             for col in row:
                 print(col, end='')
             print()
 
-    sample = {(1, 1): 'a', (2, 2): 'b', (1, 2): 'c', (3, 3): 'd'}
-    a = Map(sample, '.')
-    pprint(a.get_area(2, 2, (1, 2)))
-    pprint(a.get_area(2, 2, (2, 2)))
-    pprint(a.get_area(2, 2, (1, 1)))
-    pprint(a.get_area(2, 2, (2, 1)))
+    area = utils.Rect(-100, -100, 200, 200)
+    default = Tile('a', True)
+    walkable = Tile('b', False)
+    game_map = Map(default=walkable)
 
-    pprint(a.get_area(3, 3, (0, 0)))
-    pprint(a.get_area(3, 3, (3, 3)))
-
-    print(a)
+    game_map.set_rect(utils.Rect(50, 27, 1, 1), default)
+    player = objects.Player(utils.Vector(50, 28), b'@', 'a', game_map, fov=100)
 
