@@ -20,16 +20,23 @@ class Object:
     def __str__(self):
         return "Object: {} {} {} {}".format(self.location, self.symbol, self.color, self.visible, self.map)
 
+class Creature(Object):
+    def __init__(self, location, symbol, color, life, **kwargs):
+        super().__init__(location, symbol, color, True, True)
+        self.life = life
 
+        self.immortal = kwargs.get("immortal", False)
 
-class Player(Object):
+    def is_dead(self):
+        return not self.immortal and life <= 0
 
+class Player(Creature):
 
     '''
         The playable player object
     '''
-    def __init__(self, location, symbol, color, game_map, **kwargs):
-        super().__init__(location, symbol, color, True, False)
+    def __init__(self, location, symbol, color, game_map, life, **kwargs):
+        super().__init__(location, symbol, color, life)
         
         self.explored = set()
         self.map = game_map
@@ -49,7 +56,7 @@ class Player(Object):
         self.explored.add(self.location)
         visible = rc.cast_rays(self, self.map, self.fov)
 
-        self.visible = set(visible)
+        self.seen = set(visible)
         self.explored = self.explored.union(set(visible))
 
 
