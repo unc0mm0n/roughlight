@@ -52,7 +52,7 @@ class Game:
         # Add room lables to map
         count = 0
         for room in self.map.rooms:
-            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white, True)
+            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white, True, False)
             self.objects.append(label)
             count += 1
 
@@ -75,7 +75,7 @@ class Game:
     def run(self):
         # Game loop
         while not (libtcod.console_is_window_closed() or self.close_game):
-            libtcod.console_set_window_title(bytes('{} {}'.format(TITLE, libtcod.sys_get_fps()), 'utf-8'))
+            libtcod.console_set_window_title(bytes('{} {}'.format(str(TITLE), libtcod.sys_get_fps()), 'utf-8'))
             self.step()
             self.draw()
       
@@ -140,7 +140,8 @@ class Game:
 
         for key in KEY_MOVEMENT_VECTORS:
             if libtcod.console_is_key_pressed(key):
-                self.player.move(KEY_MOVEMENT_VECTORS[key])
+                if not self.is_blocked(self.player.location + KEY_MOVEMENT_VECTORS[key]):
+                    self.player.move(KEY_MOVEMENT_VECTORS[key])
 
 
         key = libtcod.console_check_for_keypress()
@@ -149,6 +150,12 @@ class Game:
 
         elif key.vk == libtcod.KEY_ESCAPE:
             self.close_game = True
+
+    def is_blocked(self, location):
+        if self.map[location].blocks:
+            return True
+
+        return any(object.location == location and object.blocks for object in self.objects)
                 
 
 if __name__ == '__main__':
@@ -156,10 +163,9 @@ if __name__ == '__main__':
     default = src.map.Tile(COLOR_LIGHT_WALL, True, dark_color = COLOR_DARK_WALL)
     walkable = src.map.Tile(COLOR_LIGHT_GROUND, False, dark_color = COLOR_DARK_GROUND)
     
-    game_map = src.map.Map(default=walkable)
-    game_map.set_rect(utils.Rect(49, 29, 1, 1), default)
+    #game_map = src.map.Map(default=walkable)
 
-    #game_map = src.map.Map.Random(area, 26, 11, 11, utils.Vector(50, 28), default, walkable)
+    game_map = src.map.Map.Random(area, 26, 11, 11, utils.Vector(50, 28), default, walkable)
     #print(list(str(room) for room in game_map.rooms))
     game = Game(game_map);
     game.run()

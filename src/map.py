@@ -13,13 +13,13 @@ class Tile:
         as well as any Events that might occur in it
     '''
 
-    def __init__(self, color, blocked, block_sight=None, events=None, dark_color=None):
+    def __init__(self, color, blocks, block_sight=None, events=None, dark_color=None):
         self.color = color
-        self.blocked = blocked
+        self.blocks = blocks
         
         self.block_sight = block_sight
         if self.block_sight is None:
-            self.block_sight = blocked
+            self.block_sight = blocks
 
         self.dark_color = dark_color
         if self.dark_color is None:
@@ -29,10 +29,10 @@ class Tile:
         self.events = events
 
     def shallow_copy(self):
-        return Tile(self.color, self.blocked, self.block_sight, self.events, self.dark_color)
+        return Tile(self.color, self.blocks, self.block_sight, self.events, self.dark_color)
 
     def __str__(self):
-        return "Tile: {} {} {} {}".format(self.color, self.blocked, 'a' , self.events)
+        return "Tile: {} {} {} {}".format(self.color, self.blocks, 'a' , self.events)
 
 
 class Map:
