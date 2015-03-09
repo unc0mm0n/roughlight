@@ -1,4 +1,5 @@
 import libtcodpy as libtcod
+import src.rough_light_game as rl_game
 import src.objects
 import src.map
 import src.utils as utils
@@ -16,16 +17,7 @@ COLOR_UNEXPLORED = libtcod.Color(0, 0, 0)
 
 UNEXPLORED = src.map.Tile(COLOR_UNEXPLORED, False)
 
-SAMPLE_MAP = src.map.Map({
-    (10, 10): src.map.Tile(libtcod.yellow, True),
-    (8, 4): src.map.Tile(COLOR_DARK_WALL, True),
-    (8, 5): src.map.Tile(COLOR_DARK_WALL, True),
-    (8, 6): src.map.Tile(COLOR_DARK_WALL, True),
-    (8, 7): src.map.Tile(COLOR_DARK_WALL, True),
-    (8, 8): src.map.Tile(COLOR_DARK_WALL, True),
-    (8, 9): src.map.Tile(COLOR_DARK_WALL, True),
-    (8, 10): src.map.Tile(COLOR_DARK_WALL, True)
-}, src.map.Tile(COLOR_DARK_GROUND, False))
+STARTING_LIFE = 10
 
 FONT = b'arial8x8.png'
 TITLE = b'Rough Light'
@@ -37,40 +29,26 @@ KEY_MOVEMENT_VECTORS = {
     libtcod.KEY_RIGHT: utils.Vector(1, 0),
 }
 
+
 class Game:
 
-    def __init__(self, game_map=SAMPLE_MAP, width=SCREEN_WIDTH, height=SCREEN_HEIGHT):
+    def __init__(self, game_map, width=SCREEN_WIDTH, height=SCREEN_HEIGHT, **kwargs):
 
         # Window parameters, width and height are counted in characters
         self.width = width
         self.height = height
         self.close_game = False
 
+        self.game = rl_game.RoughLightGame(game_map, width, height, **kwargs)
         self.objects = []
         self.map = game_map
-
-        # Add room lables to map
-        count = 0
-        for room in self.map.rooms:
-            label = src.objects.Object(room.get_center(), chr(ord('a')+count), libtcod.white, True, False)
-            self.objects.append(label)
-            count += 1
 
         # libtcod initialization
         libtcod.console_set_custom_font(FONT,
             libtcod.FONT_TYPE_GRAYSCALE | libtcod.FONT_LAYOUT_TCOD)
 
         libtcod.console_init_root(self.width, self.height, TITLE, False)
-        libtcod.sys_set_fps(LIMIT_FPS)
-
-        # player initialization
-        self.player = src.objects.Player(utils.Vector(50, 28), b'@', libtcod.white, self.map, fov=20)
-        self.objects.append(self.player)
-
-        npc = src.objects.Object(utils.Vector(30, 28), b'@', libtcod.red, True)
-        self.objects.append(npc)
-
-        self.player.update_fov()
+        libtcod.sys_set_fps(LIMIT_FPS)    
 
     def run(self):
         # Game loop
@@ -85,18 +63,18 @@ class Game:
 
     def draw(self):
 
-        # Get the current area the player is in based on own size and players location
-        area = self.map.get_area(self.width, self.height, self.player.location)
+        # Get the current area the player is in based on own size
+        area = self.game.get_area(self.width, self.height)
 
         # And draw it
         for x, row in enumerate(area):
             for y, square in enumerate(row):
                 tile = UNEXPLORED
                 color = tile.color
-                if square[0] in self.player.explored:
+                if square[0] in self.game.player.explored:
                     tile = square[1]
 
-                    if square[0] in self.player.visible:
+                    if square[0] in self.game.player.seen:
                         color = tile.color
                     else:
                         color = tile.dark_color
@@ -106,11 +84,9 @@ class Game:
 
         # Draw all objects in given area
         drawn = []
-        for object in self.objects:
-            if object.visible and object.location in self.player.visible:
-                if (self.map.in_area(self.width, self.height, object.location, self.player.location)):
-                    self.draw_object(object)
-                    drawn.append(object)
+        for object in self.game.visible_objects():
+            self.draw_object(object)
+            drawn.append(object)
 
         libtcod.console_flush()
 
@@ -122,7 +98,7 @@ class Game:
         # Draw given object on given console
         x, y = self.convert_location(object.location)
 
-        libtcod.console_set_default_foreground(console, object.color)
+        libtcod.console_set_default_foreground(console, libtcod.Color(*object.color))
         libtcod.console_put_char(console, x, y, object.symbol, libtcod.BKGND_NONE)
 
     def clear_object(self, object, console=0):
@@ -140,8 +116,7 @@ class Game:
 
         for key in KEY_MOVEMENT_VECTORS:
             if libtcod.console_is_key_pressed(key):
-                if not self.is_blocked(self.player.location + KEY_MOVEMENT_VECTORS[key]):
-                    self.player.move(KEY_MOVEMENT_VECTORS[key])
+                self.game.move_player(KEY_MOVEMENT_VECTORS[key])
 
 
         key = libtcod.console_check_for_keypress()
@@ -151,11 +126,7 @@ class Game:
         elif key.vk == libtcod.KEY_ESCAPE:
             self.close_game = True
 
-    def is_blocked(self, location):
-        if self.map[location].blocks:
-            return True
-
-        return any(object.location == location and object.blocks for object in self.objects)
+    
                 
 
 if __name__ == '__main__':
@@ -165,7 +136,7 @@ if __name__ == '__main__':
     
     #game_map = src.map.Map(default=walkable)
 
-    game_map = src.map.Map.Random(area, 26, 11, 11, utils.Vector(50, 28), default, walkable)
+    game_map = src.map.Map.Random(area, 26, 11, 11, utils.Vector(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2), default, walkable)
     #print(list(str(room) for room in game_map.rooms))
-    game = Game(game_map);
+    game = Game(game_map, start=(50, 28));
     game.run()
