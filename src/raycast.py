@@ -42,8 +42,8 @@ def cast_ray(start, angle, map, max_distance):
 
         for _ in range(int(max_distance / step_size)):
 
-            seen.append((int(x), int(y)))
-            tile = map[int(x), int(y)]
+            seen.append((math.floor(x), math.floor(y)))
+            tile = map[math.floor(x), math.floor(y)]
             
             if tile.block_sight:
                 return seen
